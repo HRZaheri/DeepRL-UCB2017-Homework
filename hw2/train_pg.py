@@ -8,6 +8,10 @@ import time
 import inspect
 from multiprocessing import Process
 
+# Suppress CPU instruction set warning
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+
 #============================================================================================#
 # Utilities
 #============================================================================================#
@@ -21,7 +25,7 @@ def build_mlp(
         activation=tf.tanh,
         output_activation=None
         ):
-    #========================================================================================#
+    #========================================================================================
     #                           ----------SECTION 3----------
     # Network building
     #
@@ -34,13 +38,21 @@ def build_mlp(
     #========================================================================================#
 
     with tf.variable_scope(scope):
-        # YOUR_CODE_HERE
-        pass
+        dense = input_placeholder 
+        # [Learn] No need to create a dense layer of size=input_size to accept input
+        #   The connection in the set-up below will be [input_size, units]
+        for i in range(n_layers):
+            dense = tf.layers.dense(
+                        inputs=dense, 
+                        units=size,
+                        activation=activation)
+        return tf.layers.dense(
+            inputs=dense, 
+            units=output_size, 
+            activation=output_activation)
 
 def pathlength(path):
     return len(path["reward"])
-
-
 
 #============================================================================================#
 # Policy Gradient
@@ -123,7 +135,7 @@ def train_PG(exp_name='',
         sy_ac_na = tf.placeholder(shape=[None, ac_dim], name="ac", dtype=tf.float32) 
 
     # Define a placeholder for advantages
-    sy_adv_n = TODO
+    sy_adv_n = tf.placeholder(shape=[None], name="adv", dtype=tf.float32) 
 
 
     #========================================================================================#
@@ -166,28 +178,56 @@ def train_PG(exp_name='',
     #========================================================================================#
 
     if discrete:
-        # YOUR_CODE_HERE
-        sy_logits_na = TODO
-        sy_sampled_ac = TODO # Hint: Use the tf.multinomial op
-        sy_logprob_n = TODO
+        sy_logits_na = build_mlp( 
+            input_placeholder=sy_ob_no,
+            output_size=ac_dim,
+            scope="build_nn",
+            n_layers=n_layers,
+            size=size,
+            activation=tf.nn.relu) # Avoid softmax on output layer, 
+                # as we are going to use softmax_cross_entropy for logprob.
+                # See https://www.tensorflow.org/api_docs/python/tf/nn/
+                # softmax_cross_entropy_with_logits
+        # [Learn] Use tf.multinomial
+        # [Learn] Use tf.squeeze to get rid of dimension=1
+        sy_sampled_ac = tf.squeeze(tf.multinomial(sy_logits_na, 1), axis=[1])
+        # [Learn] sparse_softmax_cross_entropy_with_logits
+        #   skip one hot encoding in softmax_cross_entropy
+        sy_logprob_n = tf.nn.sparse_softmax_cross_entropy_with_logits(
+            labels=sy_ac_na, 
+            logits=sy_logits_na)
 
     else:
-        # YOUR_CODE_HERE
-        sy_mean = TODO
-        sy_logstd = TODO # logstd should just be a trainable variable, not a network output.
-        sy_sampled_ac = TODO
-        sy_logprob_n = TODO  # Hint: Use the log probability under a multivariate gaussian. 
-
-
+        sy_mean = build_mlp(
+            input_placeholder=sy_ob_no,
+            output_size=ac_dim,
+            scope="build_nn",
+            n_layers=n_layers,
+            size=size,
+            activation=tf.nn.relu)
+        
+        # [Learn] logstd should just be a trainable variable, not a network output??
+        sy_logstd = tf.get_variable("logstd",shape=[ac_dim]) 
+        sy_sampled_ac = sy_mean + tf.multiply(tf.exp(sy_logstd),
+                                              tf.random_normal(tf.shape(sy_mean)))
+        # Hint: Use the log probability under a multivariate gaussian.
+        # Learned from github.com/mwhittaker
+        # [Learn] MultivariateNormalDiag in tensorflow library
+        dist = tf.contrib.distributions.MultivariateNormalDiag(loc=sy_mean, 
+            scale_diag=tf.exp(sy_logstd)) 
+        sy_logprob_n = -dist.log_prob(sy_ac_na)
+        # [Learn] Do the negate here works; 
+        #   Do it in loss / weighted_negative_likelihood not work.
 
     #========================================================================================#
     #                           ----------SECTION 4----------
     # Loss Function and Training Operation
     #========================================================================================#
 
-    loss = TODO # Loss function that we'll differentiate to get the policy gradient.
+    # [Learn] Multiply log by Q value, in differentiation, get \nabla log * Q.
+    weighted_negative_likelihood = tf.multiply(sy_logprob_n, sy_adv_n)
+    loss = tf.reduce_mean(weighted_negative_likelihood)
     update_op = tf.train.AdamOptimizer(learning_rate).minimize(loss)
-
 
     #========================================================================================#
     #                           ----------SECTION 5----------
@@ -196,9 +236,9 @@ def train_PG(exp_name='',
 
     if nn_baseline:
         baseline_prediction = tf.squeeze(build_mlp(
-                                sy_ob_no, 
-                                1, 
-                                "nn_baseline",
+                                input_placeholder=sy_ob_no, 
+                                output_size=1, 
+                                scope="nn_baseline",
                                 n_layers=n_layers,
                                 size=size))
         # Define placeholders for targets, a loss function and an update op for fitting a 
@@ -216,7 +256,6 @@ def train_PG(exp_name='',
     sess = tf.Session(config=tf_config)
     sess.__enter__() # equivalent to `with sess:`
     tf.global_variables_initializer().run() #pylint: disable=E1101
-
 
 
     #========================================================================================#
@@ -315,9 +354,25 @@ def train_PG(exp_name='',
         # like the 'ob_no' and 'ac_na' above. 
         #
         #====================================================================================#
+        
+        def discount_rewards_to_go(rewards, gamma):
+            res = [] 
+            future_reward = 0
+            for r in reversed(rewards):
+                future_reward = future_reward * gamma + r
+                res.append(future_reward)
+            return res[::-1]
 
-        # YOUR_CODE_HERE
-        q_n = TODO
+        def sum_discount_rewards(rewards, gamma):
+            return sum((gamma**i) * rewards[i] for i in range(len(rewards)))
+
+        q_n = []
+        if reward_to_go:
+            q_n = np.concatenate([discount_rewards_to_go(path["reward"], gamma) for path in paths])
+        else:
+            q_n = np.concatenate([
+                    [sum_discount_rewards(path["reward"], gamma)] * pathlength(path)
+                    for path in paths])
 
         #====================================================================================#
         #                           ----------SECTION 5----------
@@ -346,8 +401,7 @@ def train_PG(exp_name='',
         if normalize_advantages:
             # On the next line, implement a trick which is known empirically to reduce variance
             # in policy gradient methods: normalize adv_n to have mean zero and std=1. 
-            # YOUR_CODE_HERE
-            pass
+            adv_n = (adv_n - np.mean(adv_n)) / np.std(adv_n)
 
 
         #====================================================================================#
@@ -379,7 +433,10 @@ def train_PG(exp_name='',
         # For debug purposes, you may wish to save the value of the loss function before
         # and after an update, and then log them below. 
 
-        # YOUR_CODE_HERE
+        # [Learn] Tensorflow fetches in session.run
+        # https://www.tensorflow.org/versions/r0.12/api_docs/python/client/session_management#Session.run
+        _, loss_value = sess.run([update_op, loss], feed_dict={sy_ob_no: ob_no,
+            sy_ac_na: ac_na,sy_adv_n: adv_n})
 
 
         # Log diagnostics
@@ -395,6 +452,7 @@ def train_PG(exp_name='',
         logz.log_tabular("EpLenStd", np.std(ep_lengths))
         logz.log_tabular("TimestepsThisBatch", timesteps_this_batch)
         logz.log_tabular("TimestepsSoFar", total_timesteps)
+        logz.log_tabular("Loss", loss_value)
         logz.dump_tabular()
         logz.pickle_tf_vars()
 
