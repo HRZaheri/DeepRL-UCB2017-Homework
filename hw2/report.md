@@ -68,4 +68,4 @@ For this homework, I have completed implementing policy gradient for both discre
 
 ## Comments
 
-The code skeleton is laid out nicely with helpful comments. But the instructions in the Homework pdf could be less helpful. Especially the Section 4 when it tried to explain reward to go, because 1) it feels like an extension of lecture and 2) it lists things-to-do in a different order from the code. 
+The code skeleton is laid out nicely with helpful comments. But the instructions in the Homework pdf could be less helpful. Especially the Section 4 because 1) it feels like an extension of lecture and 2) it lists things-to-do in a different order from the code. 
