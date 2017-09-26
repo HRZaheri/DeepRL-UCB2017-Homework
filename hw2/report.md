@@ -10,8 +10,6 @@ For this homework, I have completed implementing policy gradient for both discre
 
 ## Answers
 
-#### Section 4
-
 1. Compare the learning curves for the CartPole small batches (batch size 1000). There are three different settings: vanilla flavor (sb_no_rtg_dna), with reward to go (sb_rtg_dna), with reward to go and advantage normalization (sb_rtg_na). 
 
    ![](fig/1. Cartpole SmallBatch.png)
@@ -63,6 +61,15 @@ For this homework, I have completed implementing policy gradient for both discre
    ```
 
    ![](fig/3. Inverted optimal 2*16.png)
+
+7. Implement NN Baseline
+
+   ```bash
+   python train_pg.py InvertedPendulum-v1 -n 100 -b 1500 -e 3 -rtg --exp_name ip_rtg_na --learning_rate 3e-2 --n_layers 2 --size 16 --seed 13
+   python train_pg.py InvertedPendulum-v1 -n 100 -b 1500 -e 3 -rtg -bl --exp_name ip_bl_rtg_na --learning_rate 3e-2 --n_layers 2 --size 16 --seed 13
+   ```
+
+   ![4. NN Baseline](/Users/ADM/Projects/homework/hw2/fig/4. NN Baseline.png)
 
    ​
 

@@ -243,8 +243,9 @@ def train_PG(exp_name='',
                                 size=size))
         # Define placeholders for targets, a loss function and an update op for fitting a 
         # neural network baseline. These will be used to fit the neural network baseline. 
-        # YOUR_CODE_HERE
-        baseline_update_op = TODO
+        baseline_target = tf.placeholder(shape=[None], dtype=tf.float32)
+        baseline_loss = tf.losses.mean_squared_error(predictions=baseline_prediction, labels=baseline_target)
+        baseline_update_op = tf.train.AdamOptimizer(learning_rate).minimize(baseline_loss)
 
 
     #========================================================================================#
@@ -378,8 +379,7 @@ def train_PG(exp_name='',
         #                           ----------SECTION 5----------
         # Computing Baselines
         #====================================================================================#
-
-        if nn_baseline:
+        if nn_baseline and itr > 0:
             # If nn_baseline is True, use your neural network to predict reward-to-go
             # at each timestep for each trajectory, and save the result in a variable 'b_n'
             # like 'ob_no', 'ac_na', and 'q_n'.
@@ -387,8 +387,8 @@ def train_PG(exp_name='',
             # Hint #bl1: rescale the output from the nn_baseline to match the statistics
             # (mean and std) of the current or previous batch of Q-values. (Goes with Hint
             # #bl2 below.)
-
-            b_n = TODO
+            b_n = sess.run(baseline_prediction, feed_dict={sy_ob_no: ob_no})
+            b_n = (b_n - np.mean(b_n)) / np.std(b_n) * np.std(q_n) + np.mean(q_n)
             adv_n = q_n - b_n
         else:
             adv_n = q_n.copy()
@@ -418,9 +418,10 @@ def train_PG(exp_name='',
             #
             # Hint #bl2: Instead of trying to target raw Q-values directly, rescale the 
             # targets to have mean zero and std=1. (Goes with Hint #bl1 above.)
-
-            # YOUR_CODE_HERE
-            pass
+            scaled_q = (q_n - np.mean(q_n)) / np.std(q_n)
+            _ = sess.run(baseline_update_op, feed_dict={
+                sy_ob_no : ob_no,
+                baseline_target: scaled_q})
 
         #====================================================================================#
         #                           ----------SECTION 4----------
@@ -437,7 +438,6 @@ def train_PG(exp_name='',
         # https://www.tensorflow.org/versions/r0.12/api_docs/python/client/session_management#Session.run
         _, loss_value = sess.run([update_op, loss], feed_dict={sy_ob_no: ob_no,
             sy_ac_na: ac_na,sy_adv_n: adv_n})
-
 
         # Log diagnostics
         returns = [path["reward"].sum() for path in paths]

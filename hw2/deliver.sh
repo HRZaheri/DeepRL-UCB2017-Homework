@@ -12,5 +12,8 @@ python plot.py data/lb_rtg_na data/lb_rtg_dna data/lb_no_rtg_dna
 python plot.py data/sb_rtg_dna data/lb_rtg_dna
 
 # Produce experiments results for InvertedPendulum-v1
-python train_pg.py InvertedPendulum-v1 -n 100 -b 1000 -e 5 -rtg --exp_name ip_sb_rtg_dna 
+python train_pg.py InvertedPendulum-v1 -n 100 -b 1500 -e 3 -rtg --exp_name ip_rtg_na --learning_rate 3e-2 --n_layers 2 --size 16 --seed 13
 python plot.py data/ip_
+
+# NN Baseline
+python train_pg.py InvertedPendulum-v1 -n 100 -b 1500 -e 3 -rtg -bl --exp_name ip_bl_rtg_na --learning_rate 3e-2 --n_layers 2 --size 16 --seed 13
