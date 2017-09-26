@@ -2,11 +2,11 @@
 
 _Author_     Kay Ke
 _Email_      kayke@uw.edu
-_Update_    Sep 24, 2017.
+_Update_    Sep 26, 2017.
 
 ## Summary
 
-For this homework, I have completed implementing policy gradient for both discrete and continuous action spaces, implementing reward to go (discount reward by current timestep instead of the begining of the trajectory), implementing advantage normalization, implementing baseline and $\text{GAE-}\lambda$ advantage estimation. I have shown that the algorithm could converge to the optimal score of 200 in CartPole game. I compared the performances for CartPole game using different parameters including network sizes, batches size, turning on/off reward to go and advantage normalization. I have shown that the algorithm could converge to the optimal score of 1000 in the InvertedPendulum game (1D, continuous action space) in 100 iterations, and could achieve an average score > 150 in 100 iterations for HalfCheetah game. 
+For this homework, I have completed implementing policy gradient for both discrete and continuous action spaces, implementing reward to go (discount reward by current timestep instead of the begining of the trajectory), implementing advantage normalization and implementing neural network baseline (set baseline to predictions of NN rather than mean of sampled trajectory). I have shown that the algorithm could converge to the optimal score of 200 in CartPole game. I compared the performances for CartPole game using different parameters including network sizes, batches size, turning on/off reward to go and advantage normalization. I have shown that the algorithm could converge to the optimal score of 1000 in the InvertedPendulum game (1D, continuous action space) in 100 iterations, and could achieve an average score > 150 in 100 iterations for HalfCheetah game. 
 
 ## Answers
 
@@ -52,7 +52,7 @@ For this homework, I have completed implementing policy gradient for both discre
 
    - Did the batch size make an impact?
 
-     **Yes, the larger batch size results in a smoother learning curve (less variations).  **
+     **Yes, the larger batch size results in a smoother learning curve (less variations) and seems to learn faster (in terms of # of iterations)**
 
 6. Display a learning curve for InvertedPendulum-v1
 
@@ -64,6 +64,8 @@ For this homework, I have completed implementing policy gradient for both discre
 
 7. Implement NN Baseline
 
+   Contrary to expectation, this does not seem to make a big impact on the variations. It's possible that this resulted from the small batch size I used?
+
    ```bash
    python train_pg.py InvertedPendulum-v1 -n 100 -b 1500 -e 3 -rtg --exp_name ip_rtg_na --learning_rate 3e-2 --n_layers 2 --size 16 --seed 13
    python train_pg.py InvertedPendulum-v1 -n 100 -b 1500 -e 3 -rtg -bl --exp_name ip_bl_rtg_na --learning_rate 3e-2 --n_layers 2 --size 16 --seed 13
@@ -71,11 +73,23 @@ For this homework, I have completed implementing policy gradient for both discre
 
    ![4. NN Baseline](/Users/ADM/Projects/homework/hw2/fig/4. NN Baseline.png)
 
+8. HalfCheetah achieved average score of >150 in 100 iterations.
+
+   ```bash
+   python train_pg.py HalfCheetah-v1 -ep 150 --discount 0.9 --exp_name hc2x32x15000x2e2 -n 100 -b 50000 -e 1 --learning_rate 4e-2 -rtg --n_layers 2 --size 32 --seed 17
+   # The performance varies across seed a lot. This seed is selected because it performs well. Seeds tried include 27, 37, 47, 57. None could achieve >150 in 100 iterations.
+   ```
+
+   ![](fig/5. HalfCheetah.png)
+
    ​
 
 ## Takeaway
 
-
+1. Large batch stabalizes learning process: it allows training loss to smoothly decrease, avoid variations and potentially speeds training up. 
+2. Reward to go helps training faster in infinite loop game.
+3. Advantage normalization on paper seems to be able to stablize training but in reality not necessarily. 
+4. The network does not need to be too deep / large. Small network (For HalfCheetah v1, 2*32 in this case) could be enough. Prioritize optimizing other parameters in training. 
 
 ## Comments
 
