@@ -1,26 +1,30 @@
-# Report for UCB DeepRL Homework 2, Policy Gradient Deep RL
+# Homework 2 Report, Policy Gradient Deep RL
 
 _Author_     Kay Ke
+
 _Email_      kayke@uw.edu
+
 _Update_    Sep 26, 2017.
 
 ## Summary
 
 For this homework, I have completed implementing policy gradient for both discrete and continuous action spaces, implementing reward to go (discount reward by current timestep instead of the begining of the trajectory), implementing advantage normalization and implementing neural network baseline (set baseline to predictions of NN rather than mean of sampled trajectory). I have shown that the algorithm could converge to the optimal score of 200 in CartPole game. I compared the performances for CartPole game using different parameters including network sizes, batches size, turning on/off reward to go and advantage normalization. I have shown that the algorithm could converge to the optimal score of 1000 in the InvertedPendulum game (1D, continuous action space) in 100 iterations, and could achieve an average score > 150 in 100 iterations for HalfCheetah game. 
 
+At the bottom of this report I have attached personal "take-away" summaries for this project. 
+
 ## Answers
 
 1. Compare the learning curves for the CartPole small batches (batch size 1000). There are three different settings: vanilla flavor (sb_no_rtg_dna), with reward to go (sb_rtg_dna), with reward to go and advantage normalization (sb_rtg_na). 
 
-   ![](fig/1. Cartpole SmallBatch.png)
+   ![](fig/1_cartpole_sb.png)
 
 2. Compare the learning curves for the CartPole large batches (batch size 5000). There are three different settings: vanilla flavor (lb_no_rtg_dna), with reward to go (lb_rtg_dna), with reward to go and advantage normalization (lb_rtg_na). 
 
-   ![](fig/2. Cartpole Large Batch.png)
+   ![](fig/2_cartpole_lb.png)
 
 3. Compare the learning curves for small and large batches. 
 
-   ![](fig/2.1 Cartpole SB vs LB.png)
+   ![](fig/2_cartpole_sb_lb.png)
 
 4. Command lines that generated the images above
 
@@ -60,7 +64,7 @@ For this homework, I have completed implementing policy gradient for both discre
    python train_pg.py InvertedPendulum-v1 -n 100 -b 1000 -e 5 -rtg --exp_name ip_sb_rtg_na --learning_rate 1e-2 --n_layers 2 --size 16
    ```
 
-   ![](fig/3. Inverted optimal 2*16.png)
+   ![](fig/3_pendulum_2x16.png)
 
 7. Implement NN Baseline
 
@@ -71,7 +75,7 @@ For this homework, I have completed implementing policy gradient for both discre
    python train_pg.py InvertedPendulum-v1 -n 100 -b 1500 -e 3 -rtg -bl --exp_name ip_bl_rtg_na --learning_rate 3e-2 --n_layers 2 --size 16 --seed 13
    ```
 
-   ![4. NN Baseline](/Users/ADM/Projects/homework/hw2/fig/4. NN Baseline.png)
+   ![4_NN_Baseline](fig/4_nn_baseline.png)
 
 8. HalfCheetah achieved average score of >150 in 100 iterations.
 
@@ -80,16 +84,22 @@ For this homework, I have completed implementing policy gradient for both discre
    # The performance varies across seed a lot. This seed is selected because it performs well. Seeds tried include 27, 37, 47, 57. None could achieve >150 in 100 iterations.
    ```
 
-   ![](fig/5. HalfCheetah.png)
+   ![](fig/5_hc.png)
 
    ​
 
 ## Takeaway
 
-1. Large batch stabalizes learning process: it allows training loss to smoothly decrease, avoid variations and potentially speeds training up. 
+1. Large batch stabalizes learning process: it allows training loss to smoothly decrease, avoid variations and potentially speeds training up (in terms of iteration #). 
 2. Reward to go helps training faster in infinite loop game.
 3. Advantage normalization on paper seems to be able to stablize training but in reality not necessarily. 
 4. The network does not need to be too deep / large. Small network (For HalfCheetah v1, 2*32 in this case) could be enough. Prioritize optimizing other parameters in training. 
+5. tensorflow misc:
+   1. Don't intentionally create the first layer to be of the same size as the input size. Redundant. 
+   2. `tf.nn.softmax_cross_entropy_with_logits` does not like output layer that has been softmax activated. See [Official Doc](https://www.tensorflow.org/api_docs/python/tf/nn/softmax_cross_entropy_with_logits).
+   3. Use `tf.nn.sparse_softmax_cross_entropy_with_logits` to skip hot coding. 
+   4. `tf.train.AdamOptimizer` is considered preferred to `GradientDescentOptimizer`, see [this post](https://stats.stackexchange.com/questions/184448/difference-between-gradientdescentoptimizer-and-adamoptimizer-tensorflow). On a high level it varies the step size (learning rate) by using the _moving averages of the parameter_. 
+   5. Fetch desired tensor in `sess.run([tensor_a,b,c,d], feed_dict={})` See [Official Doc](https://www.tensorflow.org/versions/r0.12/api_docs/python/client/session_management#Session.run). Execute nn update by fetching the updating_op: `sess.run(update_op, feed_dict={...})`. 
 
 ## Comments
 

@@ -206,7 +206,7 @@ def train_PG(exp_name='',
             size=size,
             activation=tf.nn.relu)
         
-        # [Learn] logstd should just be a trainable variable, not a network output??
+        # logstd should just be a trainable variable, not a network output??
         sy_logstd = tf.get_variable("logstd",shape=[ac_dim]) 
         sy_sampled_ac = sy_mean + tf.multiply(tf.exp(sy_logstd),
                                               tf.random_normal(tf.shape(sy_mean)))
