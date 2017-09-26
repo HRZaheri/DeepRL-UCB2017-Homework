@@ -58,6 +58,10 @@ For this homework, I have completed implementing policy gradient for both discre
 
 6. Display a learning curve for InvertedPendulum-v1
 
+   ```bash
+   python train_pg.py InvertedPendulum-v1 -n 100 -b 1000 -e 5 -rtg --exp_name ip_sb_rtg_na --learning_rate 1e-2 --n_layers 2 --size 16
+   ```
+
    ![](fig/3. Inverted optimal 2*16.png)
 
    ​
