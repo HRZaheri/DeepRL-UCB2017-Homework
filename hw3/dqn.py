@@ -7,6 +7,10 @@ import tensorflow                as tf
 import tensorflow.contrib.layers as layers
 from collections import namedtuple
 from dqn_utils import *
+import logging
+
+def d(s):
+    logging.getLogger('dqn').debug(s)
 
 OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs", "lr_schedule"])
 
@@ -24,6 +28,7 @@ def learn(env,
           frame_history_len=4,
           target_update_freq=10000,
           grad_norm_clipping=10):
+    
     """Run Deep Q-learning algorithm.
 
     You can specify your own convnet using q_func.
@@ -89,6 +94,9 @@ def learn(env,
         input_shape = (img_h, img_w, frame_history_len * img_c)
     num_actions = env.action_space.n
 
+    d('input_shape = {}'.format(input_shape))
+    d('num_actions = {}'.format(num_actions))
+
     # set up placeholders
     # placeholder for current observation (or state)
     obs_t_ph              = tf.placeholder(tf.uint8, [None] + list(input_shape))
@@ -149,6 +157,14 @@ def learn(env,
     q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_func')
     target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_func_target')
     
+    d("pred_q = {}".format(pred_q))
+    d("target_q = {}".format(target_q))
+
+    d("pred_ac = {}".format(pred_ac))
+    d("pred_q_a = {}".format(pred_q_a))
+    d("target_q_a = {}".format(target_q_a))
+    d("total_error = {}".format(total_error))
+
     ######
 
     # construct optimization op (with gradient clipping)
@@ -287,7 +303,7 @@ def learn(env,
                 model_initialized = True
 
             # 3.c train the model
-            session.run(train_fn, {
+            _, error = session.run([train_fn, total_error], {
                 obs_t_ph: obs_batch,
                 act_t_ph: act_batch,
                 rew_t_ph: rew_batch,
@@ -300,7 +316,7 @@ def learn(env,
             num_param_updates += 1
             if num_param_updates % target_update_freq == 0:
                 session.run(update_target_fn)
-            
+
             #####
 
         ### 4. Log progress
@@ -316,4 +332,5 @@ def learn(env,
             print("episodes %d" % len(episode_rewards))
             print("exploration %f" % exploration.value(t))
             print("learning_rate %f" % optimizer_spec.lr_schedule.value(t))
+            print("total error %f" % error)
             sys.stdout.flush()

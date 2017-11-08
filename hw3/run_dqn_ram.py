@@ -11,6 +11,7 @@ import dqn
 from dqn_utils import *
 from atari_wrappers import *
 
+import logging
 
 def atari_model(ram_in, num_actions, scope, reuse=False):
     with tf.variable_scope(scope, reuse=reuse):
@@ -111,6 +112,16 @@ def get_env(seed):
     return env
 
 def main():
+    # Logger
+    # https://github.com/mwhittaker/homework/commit/cb043dbc980d898547f552e07f475696ce57f1d3
+    format = "[%(asctime)-15s %(pathname)s:%(lineno)-3s] %(message)s"
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(format))
+    logger = logging.getLogger("dqn")
+    logger.propagate = False
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+    
     # Run training
     seed = 0 # Use a seed of zero (you may want to randomize the seed!)
     env = get_env(seed)
