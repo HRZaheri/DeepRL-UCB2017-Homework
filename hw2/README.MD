@@ -94,13 +94,8 @@ At the bottom of this report I have attached personal "take-away" summaries for 
 2. Reward to go helps training faster in infinite loop game.
 3. Advantage normalization on paper seems to be able to stablize training but in reality not necessarily. 
 4. The network does not need to be too deep / large. Small network (For HalfCheetah v1, 2*32 in this case) could be enough. Prioritize optimizing other parameters in training. 
-5. tensorflow misc:
-   1. Don't intentionally create the first layer to be of the same size as the input size. Redundant. 
-   2. `tf.nn.softmax_cross_entropy_with_logits` does not like output layer that has been softmax activated. See [Official Doc](https://www.tensorflow.org/api_docs/python/tf/nn/softmax_cross_entropy_with_logits).
-   3. Use `tf.nn.sparse_softmax_cross_entropy_with_logits` to skip hot coding. 
-   4. `tf.train.AdamOptimizer` is considered preferred to `GradientDescentOptimizer`, see [this post](https://stats.stackexchange.com/questions/184448/difference-between-gradientdescentoptimizer-and-adamoptimizer-tensorflow). On a high level it varies the step size (learning rate) by using the _moving averages of the parameter_. 
-   5. Fetch desired tensor in `sess.run([tensor_a,b,c,d], feed_dict={})` See [Official Doc](https://www.tensorflow.org/versions/r0.12/api_docs/python/client/session_management#Session.run). Execute nn update by fetching the updating_op: `sess.run(update_op, feed_dict={...})`. 
-
-## Comments
-
-The code skeleton is laid out nicely with helpful comments. But the instructions in the Homework pdf could be less helpful. Especially the Section 4 because 1) it feels like an extension of lecture and 2) it lists things-to-do in a different order from the code. 
+5. My dumb tensorflow misc:
+   1. `tf.nn.softmax_cross_entropy_with_logits` does not like output layer that has been softmax activated. See [Official Doc](https://www.tensorflow.org/api_docs/python/tf/nn/softmax_cross_entropy_with_logits).
+   2. Use `tf.nn.sparse_softmax_cross_entropy_with_logits` to skip hot coding. 
+   3. `tf.train.AdamOptimizer` is considered preferred to `GradientDescentOptimizer`, see [this post](https://stats.stackexchange.com/questions/184448/difference-between-gradientdescentoptimizer-and-adamoptimizer-tensorflow). On a high level it varies the step size (learning rate) by using the _moving averages of the parameter_. 
+   4. Fetch desired tensor in `sess.run([tensor_a,b,c,d], feed_dict={})` See [Official Doc](https://www.tensorflow.org/versions/r0.12/api_docs/python/client/session_management#Session.run). Execute nn update by fetching the updating_op: `sess.run(update_op, feed_dict={...})`. 
