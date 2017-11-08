@@ -7,7 +7,7 @@ import random
 
 def huber_loss(x, delta=1.0):
     # https://en.wikipedia.org/wiki/Huber_loss
-    return tf.select(
+    return tf.where( # Tensorflow >= 1.0
         tf.abs(x) < delta,
         tf.square(x) * 0.5,
         delta * (tf.abs(x) - 0.5 * delta)
@@ -221,7 +221,6 @@ class ReplayBuffer(object):
         done_mask      = np.array([1.0 if self.done[idx] else 0.0 for idx in idxes], dtype=np.float32)
 
         return obs_batch, act_batch, rew_batch, next_obs_batch, done_mask
-
 
     def sample(self, batch_size):
         """Sample `batch_size` different transitions.
