@@ -38,6 +38,8 @@ def atari_learn(env,
                                          (num_iterations / 2,  5e-5 * lr_multiplier),
                                     ],
                                     outside_value=5e-5 * lr_multiplier)
+
+    #lr_schedule = LinearSchedule(num_iterations, 0.0001, 0.01)
     optimizer = dqn.OptimizerSpec(
         constructor=tf.train.AdamOptimizer,
         kwargs=dict(epsilon=1e-4),

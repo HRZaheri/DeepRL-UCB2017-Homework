@@ -137,13 +137,10 @@ def learn(env,
 
     # YOUR CODE HERE
 
-    # Q(s) = [q functions for each action]
-    # Update: Q = r + pi_{s',a} * Q(s',a)
-
     # Q values
     pred_q = q_func(obs_t_float, num_actions, scope="q_func", reuse=False)
     pred_ac = tf.argmax(pred_q, axis=1)
-    pred_q_a = tf.reduce_sum(pred_q * tf.one_hot(act_t_ph, num_actions), axis=1)
+    pred_q_a = tf.reduce_sum(pred_q * tf.one_hot(act_t_ph, depth=num_actions), axis=1)
 
     # Target
     target_q = q_func(obs_tp1_float, num_actions, scope="q_func_target", reuse=False)
@@ -151,7 +148,8 @@ def learn(env,
     
     # Loss
     #total_error = huber_loss(pred_q_a, target_q_a)
-    total_error = tf.nn.l2_loss(pred_q_a - target_q_a)
+    #total_error = tf.nn.l2_loss(pred_q_a - target_q_a)
+    total_error = 0.5 * tf.reduce_sum(tf.square(pred_q_a - tf.stop_gradient(target_q_a)))
 
     # Get variables
     q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_func')
@@ -237,7 +235,7 @@ def learn(env,
             action = random.randint(0, num_actions-1)
         else:
             obs = replay_buffer.encode_recent_observation()
-            action = session.run(pred_ac, {obs_t_ph: [obs]})
+            action = session.run(pred_ac, {obs_t_ph: [obs]})[0]
 
         next_obs, reward, done, info = env.step(action)
         replay_buffer.store_effect(idx, action, reward, done)
@@ -300,6 +298,7 @@ def learn(env,
                     obs_t_ph: obs_batch,
                     obs_tp1_ph: next_obs_batch,
                 })
+                session.run(update_target_fn)
                 model_initialized = True
 
             # 3.c train the model
