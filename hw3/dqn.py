@@ -312,9 +312,13 @@ def learn(env,
                 })
 
             # 3.d periodically update the target network
-            num_param_updates += 1
-            if num_param_updates % target_update_freq == 0:
+            if t % target_update_freq == 0:
+                # Use t here instead of num_param_updates
+                # Under the default hyperparameter
+                # this will speed up learning performance
+                # Or you can set target_update_freq to less
                 session.run(update_target_fn)
+                num_param_updates += 1
 
             #####
 
