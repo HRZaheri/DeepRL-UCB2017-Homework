@@ -22,8 +22,50 @@ def sample(env,
         and returns rollouts by running on the env. 
         Each path can have elements for observations, next_observations, rewards, returns, actions, etc.
     """
-    paths = []
-    """ YOUR CODE HERE """
+    """YOUR CODE HERE """
+    paths = {
+        "observations":[], 
+        "next_observations":[], 
+        "rewards":[], 
+        "actions":[], 
+        "ep_lens":[],
+        "acc_rewards":[]
+    }
+
+    for i in range(num_paths):
+        animate_this_rollout = render and (i%10 == 0)
+        ob = env.reset()
+        ep_len = 0
+        while True:
+            if animate_this_rollout:
+                env.render()
+                time.sleep(0.05)
+            ep_len += 1
+
+            paths["observations"].append(ob)
+            act = controller.get_action(ob)
+            ob, rew, done, _ = env.step(act)
+            
+            paths["actions"].append(act)
+            paths["next_observations"].append(ob)
+            paths["rewards"].append(rew)
+            if done: break
+        paths["ep_lens"].append(ep_len)
+        paths["acc_rewards"].append(paths["rewards"][-ep_len:].sum())
+
+    if verbose:
+        print("*************** New Sample *************" % (i))
+        returns = paths["acc_rewards"]
+        ep_lengths = paths["ep_lens"]
+        print("AverageReturn", np.mean(returns))
+        print("StdReturn", np.std(returns))
+        print("MaxReturn", np.max(returns))
+        print("MinReturn", np.min(returns))
+        print("EpLenMean", np.mean(ep_lengths))
+        print("EpLenStd", np.std(ep_lengths))
+
+    for key, elem in paths:
+        paths[key] = np.array(elem)
 
     return paths
 
@@ -36,9 +78,9 @@ def compute_normalization(data):
     Write a function to take in a dataset and compute the means, and stds.
     Return 6 elements: mean of s_t, std of s_t, mean of (s_t+1 - s_t), std of (s_t+1 - s_t), mean of actions, std of actions
     """
-
     """ YOUR CODE HERE """
-    return mean_obs, std_obs, mean_deltas, std_deltas, mean_action, std_action
+    # TODO verify 
+    return np.mean(data, axis=0), np.std(data, axis=0)
 
 
 def plot_comparison(env, dyn_model):
@@ -47,6 +89,7 @@ def plot_comparison(env, dyn_model):
     """
     """ YOUR CODE HERE """
     pass
+
 
 def train(env, 
          cost_fn,
@@ -112,6 +155,7 @@ def train(env,
     random_controller = RandomController(env)
 
     """ YOUR CODE HERE """
+    paths = sample(env, random_controller, num_paths_random, env_horizon)
 
 
     #========================================================
@@ -122,8 +166,12 @@ def train(env,
     # for normalizing inputs and denormalizing outputs
     # from the dynamics network. 
     # 
-    normalization = """ YOUR CODE HERE """
-
+    """ YOUR CODE HERE """
+    normalization = {
+        "observations": compute_normalization(paths["observations"]),
+        "actions": compute_normalization(paths["actions"]), 
+        "deltas": compute_normalization(paths["next_observations"] - paths["observations"]) 
+    }
 
     #========================================================
     # 
@@ -163,8 +211,12 @@ def train(env,
     # 
     for itr in range(onpol_iters):
         """ YOUR CODE HERE """
+        dyn_model.fit(paths)
 
+        newpaths = sample(env, mpc_controller, num_paths_onpol, mpc_horizon)
 
+        for key, elem in paths:
+            paths[key] = np.concatenate(elem, newpaths[key])
 
         # LOGGING
         # Statistics for performance of MPC policy using
@@ -226,23 +278,23 @@ def main():
         env = HalfCheetahEnvNew()
         cost_fn = cheetah_cost_fn
     train(env=env, 
-                 cost_fn=cost_fn,
-                 logdir=logdir,
-                 render=args.render,
-                 learning_rate=args.learning_rate,
-                 onpol_iters=args.onpol_iters,
-                 dynamics_iters=args.dyn_iters,
-                 batch_size=args.batch_size,
-                 num_paths_random=args.random_paths, 
-                 num_paths_onpol=args.onpol_paths, 
-                 num_simulated_paths=args.simulated_paths,
-                 env_horizon=args.ep_len, 
-                 mpc_horizon=args.mpc_horizon,
-                 n_layers = args.n_layers,
-                 size=args.size,
-                 activation=tf.nn.relu,
-                 output_activation=None,
-                 )
+            cost_fn=cost_fn,
+            logdir=logdir,
+            render=args.render,
+            learning_rate=args.learning_rate,
+            onpol_iters=args.onpol_iters,
+            dynamics_iters=args.dyn_iters,
+            batch_size=args.batch_size,
+            num_paths_random=args.random_paths, 
+            num_paths_onpol=args.onpol_paths, 
+            num_simulated_paths=args.simulated_paths,
+            env_horizon=args.ep_len, 
+            mpc_horizon=args.mpc_horizon,
+            n_layers = args.n_layers,
+            size=args.size,
+            activation=tf.nn.relu,
+            output_activation=None,
+            )
 
 if __name__ == "__main__":
     main()
