@@ -34,14 +34,14 @@ def sample(env,
 
     for i in range(num_paths):
         animate_this_rollout = render and (i%10 == 0)
+        print("Sample Path {} / {}".format(i, num_paths))
         ob = env.reset()
         ep_len = 0
-        while True:
+        while ep_len < horizon:
             if animate_this_rollout:
                 env.render()
                 time.sleep(0.05)
-            ep_len += 1
-
+            
             paths["observations"].append(ob)
             act = controller.get_action(ob)
             ob, rew, done, _ = env.step(act)
@@ -49,12 +49,15 @@ def sample(env,
             paths["actions"].append(act)
             paths["next_observations"].append(ob)
             paths["rewards"].append(rew)
+
+            ep_len += 1
             if done: break
+
         paths["ep_lens"].append(ep_len)
-        paths["acc_rewards"].append(paths["rewards"][-ep_len:].sum())
+        paths["acc_rewards"].append(sum(paths["rewards"][-ep_len:]))
 
     if verbose:
-        print("*************** New Sample *************" % (i))
+        print("************* New Sample *************")
         returns = paths["acc_rewards"]
         ep_lengths = paths["ep_lens"]
         print("AverageReturn", np.mean(returns))
@@ -64,14 +67,20 @@ def sample(env,
         print("EpLenMean", np.mean(ep_lengths))
         print("EpLenStd", np.std(ep_lengths))
 
-    for key, elem in paths:
-        paths[key] = np.array(elem)
+    for key in paths.keys():
+        paths[key] = np.array(paths[key])
 
     return paths
 
 # Utility to compute cost a path for a given cost function
 def path_cost(cost_fn, path):
-    return trajectory_cost_fn(cost_fn, path['observations'], path['actions'], path['next_observations'])
+    costs = []
+    acc = 0
+    for i in path["ep_lens"]:
+        acc_n = acc + i
+        costs.append(trajectory_cost_fn(cost_fn, path['observations'][acc:acc_n], path['actions'][acc:acc_n], path['next_observations'][acc:acc_n]))
+        acc = acc_n
+    return costs
 
 def compute_normalization(data):
     """
@@ -79,8 +88,7 @@ def compute_normalization(data):
     Return 6 elements: mean of s_t, std of s_t, mean of (s_t+1 - s_t), std of (s_t+1 - s_t), mean of actions, std of actions
     """
     """ YOUR CODE HERE """
-    # TODO verify 
-    return np.mean(data, axis=0), np.std(data, axis=0)
+    return (np.mean(data, axis=0), np.std(data, axis=0))
 
 
 def plot_comparison(env, dyn_model):
@@ -153,10 +161,9 @@ def train(env,
     # model.
 
     random_controller = RandomController(env)
-
     """ YOUR CODE HERE """
-    paths = sample(env, random_controller, num_paths_random, env_horizon)
-
+    paths = sample(env=env, controller=random_controller, 
+                    num_paths=num_paths_random, horizon=env_horizon, verbose=False)
 
     #========================================================
     # 
@@ -211,16 +218,21 @@ def train(env,
     # 
     for itr in range(onpol_iters):
         """ YOUR CODE HERE """
+        shuffle_indexes = np.random.permutation(paths["observations"].shape[0])
+        for key in ['observations', 'actions', 'next_observations', 'rewards']:
+            paths[key] = paths[key][shuffle_indexes]
+
         dyn_model.fit(paths)
 
-        newpaths = sample(env, mpc_controller, num_paths_onpol, mpc_horizon)
-
-        for key, elem in paths:
-            paths[key] = np.concatenate(elem, newpaths[key])
+        newpaths = sample(env=env, controller=mpc_controller, 
+                            num_paths=num_paths_onpol, horizon=env_horizon, verbose=False)
 
         # LOGGING
         # Statistics for performance of MPC policy using
         # our learned dynamics model
+        costs = path_cost(cost_fn, newpaths)            
+        returns = newpaths["acc_rewards"]
+
         logz.log_tabular('Iteration', itr)
         # In terms of cost function which your MPC controller uses to plan
         logz.log_tabular('AverageCost', np.mean(costs))
@@ -232,11 +244,12 @@ def train(env,
         logz.log_tabular('StdReturn', np.std(returns))
         logz.log_tabular('MinimumReturn', np.min(returns))
         logz.log_tabular('MaximumReturn', np.max(returns))
-
         logz.dump_tabular()
 
-def main():
+        for key in ['observations', 'actions', 'next_observations', 'rewards']:
+            paths[key] = np.concatenate([paths[key], newpaths[key]])
 
+def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_name', type=str, default='HalfCheetah-v1')
